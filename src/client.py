@@ -1,14 +1,17 @@
 # AzureBatchをクライアントから操作するモジュール.
 # このモジュールはオンプレ側で実行され, AzureBatchを操作します.
+# memo : pip install azure-storage-blob
 
 import datetime
 import sys
 import time
+import os
 
 import azure.batch.batch_auth as batch_auth
 import azure.batch.batch_service_client as batch
 import azure.batch.models as batchmodels
 import azure.storage.blob as azureblob
+from azure.storage.blob import BlockBlobService
 
 import cfg
 
@@ -65,14 +68,14 @@ def create_job(client, pool_id):
 
 def create_select_task(client, job_id):
     """約定データ検索用のタスクを投入する."""
-    command = "python task_select.py"
+    command = "python " + cfg.TASK_SELECT_APP
 
     # コンテナの設定を行う.
     task_container_setting = batch.models.TaskContainerSettings(
         image_name=cfg.CONTAINER_URL + "/azurecloud:test", container_run_options='--workdir /app')
 
     # TASK IDを決定する.
-    task_id = 'Task_' + job_id + '_SELECT'
+    task_id = cfg.TASK_ID_SELECT_PREFIX + job_id
     # TASKを生成する.
     task = batch.models.TaskAddParameter(
             id=task_id,
@@ -80,12 +83,12 @@ def create_select_task(client, job_id):
             container_settings=task_container_setting
             )
 
-    print(f'TASKを投入します. [{task_id}]')
+    print(f'TASK(約定データ検索)を投入します. [{task_id}]')
 
     # TASKをJOBに追加する.
     client.task.add_collection(job_id, [task])
 
-    print(f'TASKを投入しました. [{task_id}]')
+    print(f'TASK(約定データ検索)を投入しました. [{task_id}]')
 
 
 def wait_for_tasks_to_complete(client, job_id, timeout):
@@ -122,12 +125,24 @@ def run():
     if not check_pool(client, cfg.POOL_ID) :
         sys.exit(-1)
 
+    # JOBを投入する.
+    job_id = create_job(client, cfg.POOL_ID)
+
     # AzureStorageのクライアントを生成する.
     blob_service_client = azureblob.BlockBlobService(
         account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
 
-    # JOBを投入する.
-    job_id = create_job(client, cfg.POOL_ID)
+    # 検索条件のファイルをローカルに生成する.
+    f = open(cfg.FILE_SELECT, 'w')
+    f.write("Hello, World!")
+    f.close()
+
+    # 検索条件のファイルをアップロードする.
+    # その際はフォルダ名をJOB IDにする.
+    blob_service_client.create_blob_from_path(
+        container_name=cfg.STORAGE_CONTAINER_UPLOAD,
+        blob_name=os.path.join(job_id, cfg.FILE_SELECT),
+        file_path=cfg.FILE_SELECT)
 
     # 検索用のTASKを投入する.
     create_select_task(client, job_id)
