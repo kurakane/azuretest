@@ -2,6 +2,7 @@ wget https://packages.microsoft.com/config/ubuntu/16.04/packages-microsoft-prod.
 
 # これを実行しないとファイルがロックされていて落ちる. どれが悪さをしているかは不明.
 sudo rm /var/lib/dpkg/lock
+sudo rm /var/lib/dpkg/lock-frontend
 # これを実行しないと blobfuseがインストールできないので追加.
 sudo dpkg --configure -a
 

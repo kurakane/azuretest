@@ -1,7 +1,7 @@
 {
   "id": "kurakanepool",
   "odata.metadata": "https://kurakane.japaneast.batch.azure.com/$metadata#pools/@Element",
-  "url": "https://kurakane.japaneast.batch.azure.com/pools/kurakanepool2",
+  "url": "https://kurakane.japaneast.batch.azure.com/pools/kurakanepool",
   "eTag": "0x8D86F49DEC88FAA",
   "lastModified": "2020-10-13T07:30:33.3906858Z",
   "creationTime": "2020-10-13T07:30:21.3707971Z",
@@ -48,7 +48,7 @@
     "containerConfiguration": {
       "type": "dockerCompatible",
       "containerImageNames": [
-        "kurakanecontainer.azurecr.io/azuretest:test"
+        "kurakanecontainer.azurecr.io/azurecloud:test"
       ],
       "containerRegistries": [
         {
