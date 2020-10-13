@@ -1,0 +1,62 @@
+{
+  "id": "kurakanepool",
+  "odata.metadata": "https://kurakane.japaneast.batch.azure.com/$metadata#pools/@Element",
+  "url": "https://kurakane.japaneast.batch.azure.com/pools/kurakanepool2",
+  "eTag": "0x8D86F49DEC88FAA",
+  "lastModified": "2020-10-13T07:30:33.3906858Z",
+  "creationTime": "2020-10-13T07:30:21.3707971Z",
+  "state": "active",
+  "stateTransitionTime": "2020-10-13T07:30:21.3707971Z",
+  "allocationState": "steady",
+  "allocationStateTransitionTime": "2020-10-13T07:31:54.7248047Z",
+  "vmSize": "standard_a1",
+  "resizeTimeout": "PT15M",
+  "currentDedicatedNodes": 1,
+  "targetDedicatedNodes": 1,
+  "currentLowPriorityNodes": 1,
+  "targetLowPriorityNodes": 1,
+  "enableAutoScale": false,
+  "enableInterNodeCommunication": false,
+  "startTask": {
+    "commandLine": "/bin/bash -c startup.sh",
+    "resourceFiles": [
+      {
+        "autoStorageContainerName": "startupscript"
+      }
+    ],
+    "userIdentity": {
+      "autoUser": {
+        "scope": "pool",
+        "elevationLevel": "admin"
+      }
+    },
+    "maxTaskRetryCount": 0,
+    "waitForSuccess": true
+  },
+  "maxTasksPerNode": 1,
+  "taskSchedulingPolicy": {
+    "nodeFillType": "Pack"
+  },
+  "virtualMachineConfiguration": {
+    "imageReference": {
+      "publisher": "microsoft-azure-batch",
+      "offer": "ubuntu-server-container",
+      "sku": "16-04-lts",
+      "version": "latest"
+    },
+    "nodeAgentSKUId": "batch.node.ubuntu 16.04",
+    "containerConfiguration": {
+      "type": "dockerCompatible",
+      "containerImageNames": [
+        "kurakanecontainer.azurecr.io/azuretest:test"
+      ],
+      "containerRegistries": [
+        {
+          "username": "kurakanecontainer",
+          "password": "M61ttBIj+yYgzTiuzJGp=A77EDL4dxkv",
+          "registryServer": "kurakanecontainer.azurecr.io"
+        }
+      ]
+    }
+  }
+}
