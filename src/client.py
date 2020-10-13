@@ -40,7 +40,7 @@ def check_pool(client, pool_id):
         print(f'POOLがActiveではありません. 異常終了します. [{cfg.POOL_ID}] [{pool.state}]')
         return False
 
-    print(f'POOL STATE : {pool.state}')
+    print(f'POOL STATE : [{pool_id}] [{pool.state}]')
     return True
 
 
@@ -68,12 +68,12 @@ def create_job(client, pool_id):
 
 def create_select_task(client, job_id):
     """約定データ検索用のタスクを投入する."""
-    command = "python " + cfg.TASK_SELECT_APP
+    command = 'python ' + cfg.TASK_SELECT_APP
 
     # コンテナの設定を行う.
     task_container_setting = batch.models.TaskContainerSettings(
         image_name=cfg.CONTAINER_URL + cfg.CONTAINER_PY_NAME,
-        container_run_options='--workdir /app')
+        container_run_options=cfg.CONTAINER_PY_OPT)
 
     # TASK IDを決定する.
     task_id = cfg.TASK_ID_SELECT_PREFIX + job_id
@@ -112,7 +112,7 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
             time.sleep(1)
 
     print()
-    raise RuntimeError("タイムアウトしました " + str(timeout))
+    raise RuntimeError("Task監視がタイムアウトしました")
 
 
 def run():

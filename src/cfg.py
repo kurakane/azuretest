@@ -31,6 +31,8 @@ TASK_SELECT_APP = 'task_select.py'
 CONTAINER_URL = 'kurakanecontainer.azurecr.io'
 # Pythonのコンテナ名.
 CONTAINER_PY_NAME = '/azurecloud:test'
+# Pythonコンテナ接続時のオプション.
+CONTAINER_PY_OPT = '--workdir /app --volume /mnt/data-in:/' + STORAGE_CONTAINER_UPLOAD + ' --volume /mnt/data-out:/' + STORAGE_CONTAINER_DOWNLOAD
 
 # アップロードする検索条件のファイル名.
 FILE_SELECT = 'condition.txt'

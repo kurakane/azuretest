@@ -12,10 +12,10 @@
   * SKU : 16-04-lts (自動入力される)
   * Disk Encryption 構成 : None (変更しない)
   * データ ディスク : (変更しない)
-  * コンテナー構成 : カスタム 
+  * コンテナー構成 : カスタム
     * コンテナーの種類 : 互換性のある Docker
-    * コンテナー イメージ名 : kurakanecontainer.azurecr.io/azuretest:X
-    * コンテナレジストリー
+    * コンテナー イメージ名 : kurakanecontainer.azurecr.io/azurecloud:test
+    * コンテナレジストリーAZ_BATCH_JOB_ID
       * レジストリのユーザー名 : kurakanecontainer
       * パスワード : M61ttBIj+yYgzTiuzJGp=A77EDL4dxkv
       * レジストリ サーバー : kurakanecontainer.azurecr.io
