@@ -14,6 +14,8 @@ STORAGE_ACCOUNT_KEY = 'vuMEUJwlfdHxnFsaCTMgW/zedeZA+k5do519n8OXE9QUW+J6aYQvHuoYv
 
 # アップロード先のAzureStorageコンテナ名.
 STORAGE_CONTAINER_UPLOAD = 'data-in'
+# ダウンロード先のAzureStorageコンテナ名.
+STORAGE_CONTAINER_DOWNLOAD = 'data-out'
 
 # POOL ID.
 POOL_ID = 'kurakanepool'
@@ -27,8 +29,8 @@ TASK_SELECT_APP = 'task_select.py'
 
 # コンテナのURL.
 CONTAINER_URL = 'kurakanecontainer.azurecr.io'
+# Pythonのコンテナ名.
+CONTAINER_PY_NAME = '/azurecloud:test'
 
 # アップロードする検索条件のファイル名.
 FILE_SELECT = 'condition.txt'
-
-

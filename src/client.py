@@ -6,12 +6,12 @@ import datetime
 import sys
 import time
 import os
+import pickle
 
 import azure.batch.batch_auth as batch_auth
 import azure.batch.batch_service_client as batch
 import azure.batch.models as batchmodels
 import azure.storage.blob as azureblob
-from azure.storage.blob import BlockBlobService
 
 import cfg
 
@@ -72,7 +72,8 @@ def create_select_task(client, job_id):
 
     # コンテナの設定を行う.
     task_container_setting = batch.models.TaskContainerSettings(
-        image_name=cfg.CONTAINER_URL + "/azurecloud:test", container_run_options='--workdir /app')
+        image_name=cfg.CONTAINER_URL + cfg.CONTAINER_PY_NAME,
+        container_run_options='--workdir /app')
 
     # TASK IDを決定する.
     task_id = cfg.TASK_ID_SELECT_PREFIX + job_id
@@ -132,10 +133,12 @@ def run():
     blob_service_client = azureblob.BlockBlobService(
         account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
 
+    # 検索条件をシリアライズする.
+    condition = {'BOOK': 'T_CORE'}
+
     # 検索条件のファイルをローカルに生成する.
-    f = open(cfg.FILE_SELECT, 'w')
-    f.write("Hello, World!")
-    f.close()
+    with open(cfg.FILE_SELECT, 'wb') as f:
+        pickle.dump(condition, f)
 
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
