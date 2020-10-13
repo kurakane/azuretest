@@ -3,10 +3,12 @@
 
 import datetime
 import sys
+import time
 
 import azure.batch.batch_auth as batch_auth
 import azure.batch.batch_service_client as batch
 import azure.batch.models as batchmodels
+import azure.storage.blob as azureblob
 
 import cfg
 
@@ -62,7 +64,51 @@ def create_job(client, pool_id):
 
 
 def create_select_task(client, job_id):
-    pass
+    """約定データ検索用のタスクを投入する."""
+    command = "python task_select.py"
+
+    # コンテナの設定を行う.
+    task_container_setting = batch.models.TaskContainerSettings(
+        image_name=cfg.CONTAINER_URL + "/azurecloud:test", container_run_options='--workdir /app')
+
+    # TASK IDを決定する.
+    task_id = 'Task_' + job_id + '_SELECT'
+    # TASKを生成する.
+    task = batch.models.TaskAddParameter(
+            id=task_id,
+            command_line=command,
+            container_settings=task_container_setting
+            )
+
+    print(f'TASKを投入します. [{task_id}]')
+
+    # TASKをJOBに追加する.
+    client.task.add_collection(job_id, [task])
+
+    print(f'TASKを投入しました. [{task_id}]')
+
+
+def wait_for_tasks_to_complete(client, job_id, timeout):
+    """タスクが完了するのを監視する."""
+    timeout_expiration = datetime.datetime.now() + timeout
+
+    print(f'タスクの終了を監視しています. タイムアウト[{timeout}]', end='')
+    while datetime.datetime.now() < timeout_expiration:
+        print('.', end='')
+        sys.stdout.flush()
+
+        # TASKの一覧を取得する.
+        tasks = client.task.list(job_id)
+        incomplete_tasks = [task for task in tasks if task.state != batchmodels.TaskState.completed]
+
+        if not incomplete_tasks:
+            print()
+            return True
+        else:
+            time.sleep(1)
+
+    print()
+    raise RuntimeError("タイムアウトしました " + str(timeout))
 
 
 def run():
@@ -76,10 +122,18 @@ def run():
     if not check_pool(client, cfg.POOL_ID) :
         sys.exit(-1)
 
+    # AzureStorageのクライアントを生成する.
+    blob_service_client = azureblob.BlockBlobService(
+        account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
+
     # JOBを投入する.
     job_id = create_job(client, cfg.POOL_ID)
 
     # 検索用のTASKを投入する.
+    create_select_task(client, job_id)
+
+    # 検索用のTASKを監視する.
+    wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=5))
 
     print('AzureBatchテスト用のクライアントを正常終了しました')
 

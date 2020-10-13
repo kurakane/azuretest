@@ -16,3 +16,6 @@ STORAGE_ACCOUNT_KEY = 'vuMEUJwlfdHxnFsaCTMgW/zedeZA+k5do519n8OXE9QUW+J6aYQvHuoYv
 POOL_ID = 'kurakanepool'
 # JOB IDのプリフィックス.
 JOB_ID_PREFIX = 'kurkanejob_'
+
+# コンテナURL.
+CONTAINER_URL = 'kurakanecontainer.azurecr.io'
