@@ -12,5 +12,7 @@ STORAGE_ACCOUNT_NAME = 'kurakanestrage'
 # AzureStrageのアクセスキー.
 STORAGE_ACCOUNT_KEY = 'vuMEUJwlfdHxnFsaCTMgW/zedeZA+k5do519n8OXE9QUW+J6aYQvHuoYvi5q/7aH7ylEEIixinWUEQObQH+WlQ=='
 
-# プールID.
+# POOL ID.
 POOL_ID = 'kurakanepool'
+# JOB IDのプリフィックス.
+JOB_ID_PREFIX = 'kurkanejob_'
