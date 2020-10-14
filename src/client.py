@@ -91,6 +91,8 @@ def create_select_task(client, job_id):
 
     print(f'TASK(約定データ検索)を投入しました. [{task_id}]')
 
+    return task_id
+
 
 def wait_for_tasks_to_complete(client, job_id, timeout):
     """タスクが完了するのを監視する."""
@@ -147,14 +149,20 @@ def run():
         blob_name=os.path.join(job_id, cfg.FILE_SELECT),
         file_path=cfg.FILE_SELECT)
 
-    # 検索用のTASKを投入する.
-    create_select_task(client, job_id)
+    # 約定データ検索用のTASKを投入する.
+    task_id = create_select_task(client, job_id)
 
-    # 検索用のTASKを監視する.
+    # 約定データ検索用のTASKを監視する.
     wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=5))
 
-    print('AzureBatchテスト用のクライアントを正常終了しました')
+    # 約定データ検索用のTASKの終了コードを取得する.
+    task_select = client.task.get(job_id, task_id)
+    print(f"TASK(約定データ検索)が終了しました. [{task_id}] [{task_select.execution_info.result}]")
+    if task_select.execution_info.result != batchmodels.TaskExecutionResult.success:        
+        print("TASK(約定データ検索)が失敗しました. 異常終了します.")
+        sys.exit(-1)
 
+    print('AzureBatchテスト用のクライアントを正常終了しました.')
 
 if __name__ == '__main__':
     run()
