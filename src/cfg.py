@@ -23,9 +23,13 @@ POOL_ID = 'kurakanepool'
 JOB_ID_PREFIX = 'kurkanejob_'
 # Task約定データ検索のプリフィックス.
 TASK_ID_SELECT_PREFIX = 'task_select_trade_'
+# Task計算のプリフィックス.
+TASK_ID_CACL_PREFIX = 'task_calc_'
 
 # Task約定データ検索のファイル名.
 TASK_SELECT_APP = 'task_select.py'
+# Task計算のファイル名.
+TASK_CALC_APP = 'task_calc.py'
 
 # コンテナのURL.
 CONTAINER_URL = 'kurakanecontainer.azurecr.io'
