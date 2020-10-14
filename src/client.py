@@ -193,6 +193,9 @@ def run():
     # 計算用のTASKを投入する.
     create_calc_tasks(client, job_id)
 
+    # 計算用のTASKを監視する.
+    wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=20))
+
     print('AzureBatchテスト用のクライアントを正常終了しました.')
 
 if __name__ == '__main__':
