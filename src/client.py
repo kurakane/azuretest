@@ -144,7 +144,7 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
             time.sleep(1)
 
     print()
-    raise RuntimeError("Task監視がタイムアウトしました")
+    raise RuntimeError("Task監視がタイムアウトしました. [{timeout}]")
 
 
 def run():
