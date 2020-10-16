@@ -133,7 +133,7 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
 
     sec = 1
     while datetime.datetime.now() < timeout_expiration:
-        print(f'\rタスクの終了を監視しています. タイムアウト[{timeout}] [{sec}]', end='')
+        print(f'\rタスクの終了を監視しています. タイムアウト[{timeout}] [{datetime.timedelta(seconds=sec)}]', end='')
         sys.stdout.flush()
 
         # TASKの一覧を取得する.
