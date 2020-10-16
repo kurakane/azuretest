@@ -2,11 +2,12 @@
 # このモジュールはオンプレ側で実行され, AzureBatchを操作します.
 # memo : pip install azure-storage-blob
 
+import bz2
 import datetime
-import sys
-import time
 import os
 import pickle
+import sys
+import time
 
 import azure.batch.batch_auth as batch_auth
 import azure.batch.batch_service_client as batch
@@ -14,6 +15,7 @@ import azure.batch.models as batchmodels
 import azure.storage.blob as azureblob
 
 import cfg
+import dummy
 
 
 def create_batch_service_client():
@@ -64,6 +66,7 @@ def create_job(client, pool_id):
 
 
 def setting_continer():
+    """TaskContainerSettingsを生成する."""
     return batch.models.TaskContainerSettings(
         image_name=cfg.CONTAINER_URL + cfg.CONTAINER_PY_NAME,
         container_run_options=cfg.CONTAINER_PY_OPT)
@@ -147,6 +150,32 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
     raise RuntimeError("Task監視がタイムアウトしました. [{timeout}]")
 
 
+def upload(blob_service_client, job_id, blob_file_name, object):
+    """指定されたファイルをAzureStorageにアップロードする."""
+    # アップロードファイルをローカルに出力する.
+    with open(cfg.FILE_TMP, 'wb') as f:
+        pickle.dump(object, f)
+
+    # アップロードファイルをBZ2圧縮する.
+    with open(cfg.FILE_TMP, 'rb') as f:
+        data = f.read()
+        with open(blob_file_name, 'wb') as f2:
+            f2.write(bz2.compress(data))
+
+    print(f'ファイルをアップロードします. [{blob_file_name}]')
+    # 検索条件のファイルをアップロードする.
+    # その際はフォルダ名をJOB IDにする.
+    blob_service_client.create_blob_from_path(
+        container_name=cfg.STORAGE_CONTAINER_UPLOAD,
+        blob_name=os.path.join(job_id, blob_file_name),
+        file_path=blob_file_name)
+    print(f'ファイルをアップロードが完了しました. [{blob_file_name}]')
+
+    # アップロード後にローカルのファイルを削除する.
+    os.remove(cfg.FILE_TMP)
+    os.remove(blob_file_name)
+
+
 def run():
     """主処理."""
     print('AzureBatchテスト用のクライアントを起動しました')
@@ -155,6 +184,7 @@ def run():
     client = create_batch_service_client()
 
     # POOLの状態をチェックする.
+    # POOLが使用できる状態でない場合は終了する.
     check_pool(client, cfg.POOL_ID)
 
     # JOBを投入する.
@@ -163,6 +193,11 @@ def run():
     # AzureStorageのクライアントを生成する.
     blob_service_client = azureblob.BlockBlobService(
         account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
+
+    # ★ダミーの休日情報を取得する.
+    holidays = dummy.Holidays()
+    # 休日情報をアップロードする.
+    upload(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
     # 検索条件をシリアライズする.
     condition = {'BOOK': 'T_CORE'}

@@ -38,5 +38,9 @@ CONTAINER_PY_NAME = '/azurecloud:test'
 # Pythonコンテナ接続時のオプション.
 CONTAINER_PY_OPT = '--workdir /app --volume /mnt/data-in:/' + STORAGE_CONTAINER_UPLOAD + ' --volume /mnt/data-out:/' + STORAGE_CONTAINER_DOWNLOAD
 
+# アップロード時のローカルファイルのファイル名.
+FILE_TMP = 'tmp.dmp'
+# アップロードする休日情報のファイル名.
+FILE_HOLIDAYS = 'holidays.bz2'
 # アップロードする検索条件のファイル名.
 FILE_SELECT = 'condition.txt'
