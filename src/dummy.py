@@ -4,6 +4,11 @@ from collections import OrderedDict
 import datetime
 import copy
 
+class ObsTradeQueryBuilder:
+    """ダミーの検索条件クラス."""
+    pass
+
+
 class Holidays:
     """ダミーの休日情報クラス."""
     def __init__(self):

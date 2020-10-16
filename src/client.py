@@ -131,9 +131,9 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
     """タスクが完了するのを監視する."""
     timeout_expiration = datetime.datetime.now() + timeout
 
-    print(f'タスクの終了を監視しています. タイムアウト[{timeout}]', end='')
+    sec = 1
     while datetime.datetime.now() < timeout_expiration:
-        print('.', end='')
+        print(f'\rタスクの終了を監視しています. タイムアウト[{timeout}] [{sec}]', end='')
         sys.stdout.flush()
 
         # TASKの一覧を取得する.
@@ -144,10 +144,11 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
             print()
             return True
         else:
+            sec += 1
             time.sleep(1)
 
     print()
-    raise RuntimeError("Task監視がタイムアウトしました. [{timeout}]")
+    raise RuntimeError(f"Task監視がタイムアウトしました. [{timeout}]")
 
 
 def upload(blob_service_client, job_id, blob_file_name, object):
@@ -190,46 +191,44 @@ def run():
     # JOBを投入する.
     job_id = create_job(client, cfg.POOL_ID)
 
-    # AzureStorageのクライアントを生成する.
-    blob_service_client = azureblob.BlockBlobService(
-        account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
+    try:
+        # AzureStorageのクライアントを生成する.
+        blob_service_client = azureblob.BlockBlobService(
+            account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
 
-    # ★ダミーの休日情報を取得する.
-    holidays = dummy.Holidays()
-    # 休日情報をアップロードする.
-    upload(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
+        # ★ダミーの休日情報を取得する.
+        holidays = dummy.Holidays()
+        # 休日情報をアップロードする.
+        upload(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
-    # 検索条件をシリアライズする.
-    condition = {'BOOK': 'T_CORE'}
+        # 検索条件をシリアライズする.
+        condition = {'BOOK': 'T_CORE'}
+        # 検索条件をアップロードする.
+        upload(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
-    # 検索条件のファイルをローカルに生成する.
-    with open(cfg.FILE_SELECT, 'wb') as f:
-        pickle.dump(condition, f)
+        # 約定データ検索用のTASKを投入する.
+        task_id = create_select_task(client, job_id)
 
-    # 検索条件のファイルをアップロードする.
-    # その際はフォルダ名をJOB IDにする.
-    blob_service_client.create_blob_from_path(
-        container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-        blob_name=os.path.join(job_id, cfg.FILE_SELECT),
-        file_path=cfg.FILE_SELECT)
+        # 約定データ検索用のTASKを監視する.
+        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=5))
 
-    # 約定データ検索用のTASKを投入する.
-    task_id = create_select_task(client, job_id)
+        # 約定データ検索用のTASKの終了コードを取得する.
+        task_select = client.task.get(job_id, task_id)
+        print(f"TASK(約定データ検索)が終了しました. [{task_id}] [{task_select.execution_info.result}]")
+        if task_select.execution_info.result != batchmodels.TaskExecutionResult.success:        
+            raise RuntimeError("TASK(約定データ検索)が失敗しました. 異常終了します.")
 
-    # 約定データ検索用のTASKを監視する.
-    wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=5))
+        # 計算用のTASKを投入する.
+        create_calc_tasks(client, job_id)
 
-    # 約定データ検索用のTASKの終了コードを取得する.
-    task_select = client.task.get(job_id, task_id)
-    print(f"TASK(約定データ検索)が終了しました. [{task_id}] [{task_select.execution_info.result}]")
-    if task_select.execution_info.result != batchmodels.TaskExecutionResult.success:        
-        raise RuntimeError("TASK(約定データ検索)が失敗しました. 異常終了します.")
+        # 計算用のTASKを監視する.
+        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=20))
 
-    # 計算用のTASKを投入する.
-    create_calc_tasks(client, job_id)
+    except Exception as e:
+        # TODO: 後片付け
+        print(e)
+        raise e
 
-    # 計算用のTASKを監視する.
-    wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=20))
 
     print('AzureBatchテスト用のクライアントを正常終了しました.')
 
