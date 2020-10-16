@@ -30,7 +30,7 @@
         "elevationLevel": "admin"
       }
     },
-    "maxTaskRetryCount": 0,
+    "maxTaskRetryCount": 3,
     "waitForSuccess": true
   },
   "maxTasksPerNode": 1,
