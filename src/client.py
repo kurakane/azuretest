@@ -148,6 +148,13 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
             time.sleep(1)
 
     print()
+
+    # 動いているタスクを強制終了する.
+    print(f"Task監視がタイムアウトしました. 強制終了します. [{timeout}]")
+    for task in client.task.list(job_id):
+        print(f'タスクを強制終了します. [{task.id}] [{task.state}]')
+        client.task.terminate(job_id, task.id)
+
     raise RuntimeError(f"Task監視がタイムアウトしました. [{timeout}]")
 
 
@@ -158,17 +165,19 @@ def upload(blob_service_client, job_id, blob_file_name, object):
         pickle.dump(object, f)
 
     # アップロードファイルをBZ2圧縮する.
+    print(f'ファイルを圧縮します. [{blob_file_name}] [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB]')
     with open(cfg.FILE_TMP, 'rb') as f:
         data = f.read()
         with open(blob_file_name, 'wb') as f2:
             f2.write(bz2.compress(data))
+    print(f'ファイルを圧縮しました. [{blob_file_name}] [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB]')
 
     print(f'ファイルをアップロードします. [{blob_file_name}]')
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
     blob_service_client.create_blob_from_path(
         container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-        blob_name=os.path.join(job_id, blob_file_name),
+        blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
         file_path=blob_file_name)
     print(f'ファイルをアップロードが完了しました. [{blob_file_name}]')
 
@@ -201,8 +210,8 @@ def run():
         # 休日情報をアップロードする.
         upload(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
-        # 検索条件をシリアライズする.
-        condition = {'BOOK': 'T_CORE'}
+        # ★ダミーの検索条件をシリアライズする.
+        condition = dummy.ObsTradeQueryBuilder()
         # 検索条件をアップロードする.
         upload(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
@@ -226,11 +235,12 @@ def run():
 
     except Exception as e:
         # TODO: 後片付け
-        print(e)
+        # print(e)
         raise e
 
 
     print('AzureBatchテスト用のクライアントを正常終了しました.')
+
 
 if __name__ == '__main__':
     run()

@@ -4,9 +4,11 @@ from collections import OrderedDict
 import datetime
 import copy
 
+
 class ObsTradeQueryBuilder:
     """ダミーの検索条件クラス."""
-    pass
+    def dump(self):
+        print('ObsTradeQueryBuilder')
 
 
 class Holidays:
@@ -23,3 +25,13 @@ class Holidays:
         self.cities['GBLO'] = copy.copy(holidays)
         self.cities['JPTO'] = copy.copy(holidays)
         self.cities['USNY'] = copy.copy(holidays)
+
+
+    def dump(self):
+        print('Holidays')
+        print(len(self.cities))
+
+
+class SplTrade:
+    def __init__(self):
+        pass

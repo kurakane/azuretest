@@ -41,6 +41,6 @@ CONTAINER_PY_OPT = '--workdir /app --volume /mnt/data-in:/' + STORAGE_CONTAINER_
 # アップロード時のローカルファイルのファイル名.
 FILE_TMP = 'tmp.dmp'
 # アップロードする休日情報のファイル名.
-FILE_HOLIDAYS = 'Holidays.bz2'
+FILE_HOLIDAYS = 'Holidays'
 # アップロードする検索条件のファイル名.
-FILE_SELECT = 'ObsTradeQueryBuilder.bz2'
+FILE_SELECT = 'ObsTradeQueryBuilder'
