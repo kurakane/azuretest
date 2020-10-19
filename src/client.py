@@ -126,6 +126,8 @@ def create_calc_tasks(client, job_id):
 
     print(f'TASK(計算)を投入しました. [{task_id}]')
 
+    return [task_id]
+
 
 def wait_for_tasks_to_complete(client, job_id, timeout):
     """タスクが完了するのを監視する."""
@@ -149,20 +151,14 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
 
     print()
 
-    # 動いているタスクを強制終了する.
-    print(f"Task監視がタイムアウトしました. 強制終了します. [{timeout}]")
-    for task in client.task.list(job_id):
-        print(f'タスクを強制終了します. [{task.id}] [{task.state}]')
-        client.task.terminate(job_id, task.id)
-
     raise RuntimeError(f"Task監視がタイムアウトしました. [{timeout}]")
 
 
-def upload(blob_service_client, job_id, blob_file_name, object):
+def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
     """指定されたファイルをAzureStorageにアップロードする."""
     # アップロードファイルをローカルに出力する.
     with open(cfg.FILE_TMP, 'wb') as f:
-        pickle.dump(object, f)
+        pickle.dump(obj, f)
 
     # アップロードファイルをBZ2圧縮する.
     print(f'ファイルを圧縮します. [{blob_file_name}] [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB]')
@@ -208,12 +204,12 @@ def run():
         # ★ダミーの休日情報を取得する.
         holidays = dummy.Holidays()
         # 休日情報をアップロードする.
-        upload(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
+        upload_to_blob(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
         # ★ダミーの検索条件をシリアライズする.
-        condition = dummy.ObsTradeQueryBuilder()
+        condition = dummy.ObsTradeQueryBuilder(30000)
         # 検索条件をアップロードする.
-        upload(blob_service_client, job_id, cfg.FILE_SELECT, condition)
+        upload_to_blob(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
         # 約定データ検索用のTASKを投入する.
         task_id = create_select_task(client, job_id)
@@ -224,21 +220,39 @@ def run():
         # 約定データ検索用のTASKの終了コードを取得する.
         task_select = client.task.get(job_id, task_id)
         print(f"TASK(約定データ検索)が終了しました. [{task_id}] [{task_select.execution_info.result}]")
-        if task_select.execution_info.result != batchmodels.TaskExecutionResult.success:        
+        if task_select.execution_info.result != batchmodels.TaskExecutionResult.success:
             raise RuntimeError("TASK(約定データ検索)が失敗しました. 異常終了します.")
 
         # 計算用のTASKを投入する.
-        create_calc_tasks(client, job_id)
+        task_ids = create_calc_tasks(client, job_id)
 
         # 計算用のTASKを監視する.
         wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=20))
 
+        # 計算用のTASKの終了コードを取得する.
+        for task_id in task_ids:
+            task_calc = client.task.get(job_id, task_id)
+            print(f"TAKS(計算)が終了しました. [{task_id}] [{task_calc.execution_info.result}]")
+            if task_calc.execution_info.result != batchmodels.TaskExecutionResult.success:       
+                raise RuntimeError("TASK(計算)が失敗しました. 異常終了します.")
+
     except Exception as e:
-        # TODO: 後片付け
-        # print(e)
+        # 動いているタスクを強制終了する. 実際にここが役に立つのはタイムアウト時のみの想定.
+        print(f"例外が発生しました.")
+        for task in client.task.list(job_id):
+            if task.state == batchmodels.TaskState.running:
+                print(f'タスクを強制終了します. [{task.id}] [{task.state}]')
+                client.task.terminate(job_id, task.id)
+
+        # ジョブを終了する.
+        print(f'ジョブを強制終了します. [{job_id}]')
+        client.job.terminate(job_id, terminate_reason='異常終了')
+
+        # 例外は呼び出し元に投げる.
         raise e
 
-
+    # JOBを正常終了する.
+    client.job.terminate(job_id, terminate_reason='正常終了')
     print('AzureBatchテスト用のクライアントを正常終了しました.')
 
 

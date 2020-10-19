@@ -7,8 +7,14 @@ import copy
 
 class ObsTradeQueryBuilder:
     """ダミーの検索条件クラス."""
+    def __init__(self, count):
+        # クライアント側から明細の件数を渡せるようにしておく.
+        self.count = count
+
+
     def dump(self):
         print('ObsTradeQueryBuilder')
+        print(f'明細:[{self.count}]')
 
 
 class Holidays:
@@ -34,4 +40,6 @@ class Holidays:
 
 class SplTrade:
     def __init__(self):
-        pass
+        self.data = []
+        for i in range(1000):
+            self.data.append(i)

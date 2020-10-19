@@ -9,7 +9,7 @@
   "stateTransitionTime": "2020-10-13T07:30:21.3707971Z",
   "allocationState": "steady",
   "allocationStateTransitionTime": "2020-10-13T07:31:54.7248047Z",
-  "vmSize": "standard_a1",
+  "vmSize": "standard_d1_v2",
   "resizeTimeout": "PT15M",
   "currentDedicatedNodes": 1,
   "targetDedicatedNodes": 1,
