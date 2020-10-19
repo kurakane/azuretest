@@ -20,9 +20,9 @@ STORAGE_CONTAINER_DOWNLOAD = 'data-out'
 # POOL ID.
 POOL_ID = 'kurakanepool'
 # JOB IDのプリフィックス.
-JOB_ID_PREFIX = 'kurkanejob_'
+JOB_ID_PREFIX = 'job_'
 # Task約定データ検索のプリフィックス.
-TASK_ID_SELECT_PREFIX = 'task_select_trade_'
+TASK_ID_SELECT_PREFIX = 'task_select_'
 # Task計算のプリフィックス.
 TASK_ID_CACL_PREFIX = 'task_calc_'
 

@@ -74,10 +74,10 @@ def setting_continer():
 
 def eval_task_status(task_return):
     """Taskの投入結果を判定する."""
-    # TODO 複数件チェック
-    print(f"ステータス [{task_return.value[0].status}]")
-    if task_return.value[0].status != batchmodels.TaskAddStatus.success:
-        raise RuntimeError("Taskの投入に失敗しました")
+    for result in task_return.value:
+        print(f'[{result.task_id}] [{result.status}]')
+        if result.status != batchmodels.TaskAddStatus.success:
+            raise RuntimeError("Taskの投入に失敗しました.")
 
 
 def create_select_task(client, job_id):
@@ -85,7 +85,7 @@ def create_select_task(client, job_id):
     command = 'python ' + cfg.TASK_SELECT_APP
 
     # TASK IDを決定する.
-    task_id = cfg.TASK_ID_SELECT_PREFIX + job_id
+    task_id = cfg.TASK_ID_SELECT_PREFIX
     # TASKを生成する.
     task = batch.models.TaskAddParameter(
             id=task_id,
@@ -109,24 +109,41 @@ def create_calc_tasks(client, job_id):
     """約定データ検索用のタスクを投入する."""
     command = 'python ' + cfg.TASK_CALC_APP
 
-    # TASK IDを決定する.
-    task_id = cfg.TASK_ID_CACL_PREFIX + job_id
-    # TASKを生成する.
+    task_ids = []
+    tasks = []
+
+    # ベースPVのTASK IDを決定する.
+    task_id = cfg.TASK_ID_CACL_PREFIX + "BASE"
+    task_ids.append(task_id)
+    # ベースPVのTASKを生成する.
     task = batch.models.TaskAddParameter(
             id=task_id,
             command_line=command,
             container_settings=setting_continer()
             )
+    tasks.append(task)
 
-    print(f'TASK(計算)を投入します. [{task_id}]')
+    # センシティビティのTASK_IDを決定する.
+    for i in range(50):
+        task_id = cfg.TASK_ID_CACL_PREFIX + str(i)
+        task_ids.append(task_id)
+
+        task = batch.models.TaskAddParameter(
+            id=task_id,
+            command_line=command,
+            container_settings=setting_continer()
+            )
+        tasks.append(task)
+
+    print(f'TASK(計算)を投入します. [{task_ids}]')
 
     # TASKをJOBに追加する.
-    resut = client.task.add_collection(job_id, [task])
-    eval_task_status(resut)
+    result = client.task.add_collection(job_id, tasks)
+    eval_task_status(result)
 
-    print(f'TASK(計算)を投入しました. [{task_id}]')
+    print(f'TASK(計算)を投入しました. [{task_ids}]')
 
-    return [task_id]
+    return task_ids
 
 
 def wait_for_tasks_to_complete(client, job_id, timeout):
@@ -151,6 +168,7 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
 
     print()
 
+    print(f"Task監視がタイムアウトしました.")
     raise RuntimeError(f"Task監視がタイムアウトしました. [{timeout}]")
 
 
@@ -207,7 +225,7 @@ def run():
         upload_to_blob(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
         # ★ダミーの検索条件をシリアライズする.
-        condition = dummy.ObsTradeQueryBuilder(30000)
+        condition = dummy.ObsTradeQueryBuilder(10000, 100)
         # 検索条件をアップロードする.
         upload_to_blob(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
@@ -253,6 +271,9 @@ def run():
 
     # JOBを正常終了する.
     client.job.terminate(job_id, terminate_reason='正常終了')
+
+    # TODO: AzureStorageから不要なファイルを削除する.
+
     print('AzureBatchテスト用のクライアントを正常終了しました.')
 
 

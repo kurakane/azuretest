@@ -1,20 +1,23 @@
 """データのダミークラスの定義."""
 
-from collections import OrderedDict
-import datetime
 import copy
+import datetime
+import random
+from collections import OrderedDict
 
 
 class ObsTradeQueryBuilder:
     """ダミーの検索条件クラス."""
-    def __init__(self, count):
+    def __init__(self, count, data_count):
         # クライアント側から明細の件数を渡せるようにしておく.
         self.count = count
+        self.data_count = data_count
 
 
     def dump(self):
         print('ObsTradeQueryBuilder')
         print(f'明細:[{self.count}]')
+        print(f'データ数:[{self.data_count}]')
 
 
 class Holidays:
@@ -39,7 +42,14 @@ class Holidays:
 
 
 class SplTrade:
-    def __init__(self):
-        self.data = []
-        for i in range(1000):
-            self.data.append(i)
+    def __init__(self, data_count):
+        self.datas = []
+        dummy_str = ''
+        for i in range(data_count):
+            dummy_str += random.choice('ABCEDFGHIJKLMNOPQRSTUVWXYZ')
+        self.datas.append(dummy_str)
+
+    
+    def dump(self):
+        for data in self.datas:
+            print(len(data))
