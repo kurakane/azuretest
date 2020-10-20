@@ -29,8 +29,8 @@ TASK_ID_CACL_PREFIX = 't_calc_'
 TASK_ID_AGGR = 't_aggr'
 
 # タイムアウト値(分)
-TIMEOUT_SELECT = 5
-TIMEOUT_CALC = 1
+TIMEOUT_SELECT = 10
+TIMEOUT_CALC = 60
 TIMEOUT_AGGR = 10
 
 # Task約定データ検索のファイル名.

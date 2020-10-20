@@ -31,16 +31,18 @@ def create_batch_service_client():
 
 def check_pool(client, pool_id):
     """POOLの状態をチェックする."""
+
+    print(f'POOLの状態をチェックします', end='')
     # POOLの存在チェックを行う.
     if not client.pool.exists(pool_id) :
-        raise RuntimeError(f'POOLが存在しません. 異常終了します. [{pool_id}]')
+        raise RuntimeError(f'POOLが存在しません 異常終了します [{pool_id}]')
 
     # POOLのステータスチェックを行う.
     pool = client.pool.get(pool_id)
     if pool.state != batchmodels.PoolState.active:
-        raise RuntimeError(f'POOLがActiveではありません. 異常終了します. [{pool_id}] [{pool.state}]')
+        raise RuntimeError(f'POOLがActiveではありません 異常終了します [{pool_id}] [{pool.state}]')
 
-    print(f'POOL STATE : [{pool_id}] [{pool.state}]')
+    print(f' [{pool_id}] [{pool.state}] <OK>')
 
 
 def create_job(client, pool_id):
@@ -57,9 +59,9 @@ def create_job(client, pool_id):
         pool_info=batch.models.PoolInformation(pool_id=pool_id))
 
     # JOBをPOOLに投入する.
+    print(f'JOBを投入します [{job_id}]', end='')
     client.job.add(job)
-
-    print(f'JOBを投入しました. [{job_id}]')
+    print(f' <OK>')
     return job_id
 
 
@@ -75,11 +77,11 @@ def eval_task_status(task_return):
     for result in task_return.value:
         # print(f'[{result.task_id}] [{result.status}]')
         if result.status != batchmodels.TaskAddStatus.success:
-            raise RuntimeError("Taskの投入に失敗しました.")
+            raise RuntimeError("TASKの投入に失敗しました")
 
 
 def create_select_task(client, job_id):
-    """約定データ検索用のタスクを投入する."""
+    """約定データ検索用のTASKを投入する."""
     command = 'python ' + cfg.TASK_SELECT_APP
 
     # TASK IDを決定する.
@@ -92,17 +94,16 @@ def create_select_task(client, job_id):
             )
 
     # TASKをJOBに追加する.
+    print(f'TASK(約定データ検索)を投入します [{task_id}]', end='')
     result = client.task.add_collection(job_id, [task])
     eval_task_status(result)
-
-    print(f'TASK(約定データ検索)を投入しました. [{task_id}]')
+    print(f' <OK>')
 
     return task_id
 
 
 def create_calc_tasks(client, job_id):
-    """計算用のタスクを投入する"""
-    """約定データ検索用のタスクを投入する."""
+    """計算用のTASKを投入する"""
     command = 'python ' + cfg.TASK_CALC_APP
 
     task_ids = []
@@ -119,7 +120,7 @@ def create_calc_tasks(client, job_id):
             )
     tasks.append(task)
 
-    for i in range(5):
+    for i in range(1):
         # センシティビティのTASK_IDを決定する.
         task_id = cfg.TASK_ID_CACL_PREFIX + str(i).zfill(3)
         task_ids.append(task_id)
@@ -132,16 +133,16 @@ def create_calc_tasks(client, job_id):
         tasks.append(task)
 
     # TASKをJOBに追加する.
+    print(f'TASK(計算)を投入します [{len(task_ids)}件]', end='')
     result = client.task.add_collection(job_id, tasks)
     eval_task_status(result)
-
-    print(f'TASK(計算)を投入しました. [{len(task_ids)}件]')
+    print(f' <OK>')
 
     return task_ids
 
 
 def create_aggr_tasks(client, job_id, task_ids):
-    """集約用のタスクを投入する."""
+    """集約用のTASKを投入する. 引数にTASK IDを渡す."""
     command = 'python ' + cfg.TASK_AGGR_APP + ' ' + ' '.join(task_ids)
 
     # TASK IDを決定する.
@@ -154,10 +155,10 @@ def create_aggr_tasks(client, job_id, task_ids):
             )
 
     # TASKをJOBに追加する.
+    print(f'TASK(集約)を投入します [{task_id}]', end='')
     result = client.task.add_collection(job_id, [task])
     eval_task_status(result)
-
-    print(f'TASK(集約)を投入しました. [{task_id}] ')
+    print(f' <OK>')
 
     return task_id
 
@@ -168,7 +169,7 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
 
     start_time = time.time()
     while datetime.datetime.now() < timeout_expiration:
-        print(f'\rタスクを監視しています. タイムアウト[{timeout}] [{datetime.timedelta(seconds=int(time.time() - start_time))}]', end='')
+        print(f'\rTASKを監視しています タイムアウト[{timeout}] [{datetime.timedelta(seconds=int(time.time() - start_time))}]', end='')
         sys.stdout.flush()
 
         # TASKの一覧を取得する.
@@ -176,14 +177,14 @@ def wait_for_tasks_to_complete(client, job_id, timeout):
         incomplete_tasks = [task for task in tasks if task.state != batchmodels.TaskState.completed]
 
         if not incomplete_tasks:
-            print(' 【完了】')
+            print(f' <OK>')
             return True
         else:
             time.sleep(1)
 
     print()
-    print(f"Task監視がタイムアウトしました.")
-    raise RuntimeError(f"Task監視がタイムアウトしました. [{timeout}]")
+    print(f"TASK監視がタイムアウトしました.")
+    raise RuntimeError(f"TASK監視がタイムアウトしました [{timeout}]")
 
 
 def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
@@ -198,7 +199,7 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
         data = f.read()
         with open(blob_file_name, 'wb') as f2:
             f2.write(bz2.compress(data))
-    print(f' [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB] to [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB] 【完了】')
+    print(f' [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB] to [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB] <OK>')
 
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
@@ -207,7 +208,7 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
         container_name=cfg.STORAGE_CONTAINER_UPLOAD,
         blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
         file_path=blob_file_name)
-    print(f' 【完了】')
+    print(f' <OK>')
 
     # アップロード後にローカルのファイルを削除する.
     os.remove(cfg.FILE_TMP)
@@ -227,7 +228,7 @@ def remove_input_file(blob_service_client, job_id, file_name):
             container_name=cfg.STORAGE_CONTAINER_UPLOAD,
             blob_name=blob_name
         )
-        print(' 【完了】')
+        print(f' <OK>')
 
 
 def remove_output_file(blob_service_client, job_id, task_ids):
@@ -255,8 +256,7 @@ def run():
     # AzureBatchアクセス用のクライアントを生成する.
     client = create_batch_service_client()
 
-    # POOLの状態をチェックする.
-    # POOLが使用できる状態でない場合は終了する.
+    # POOLの状態をチェックする. POOLが使用できる状態でない場合は終了する.
     check_pool(client, cfg.POOL_ID)
 
     # JOBを投入する.
@@ -273,7 +273,7 @@ def run():
         upload_to_blob(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
         # ★ダミーの検索条件をシリアライズする.
-        condition = dummy.ObsTradeQueryBuilder(5, 10)
+        condition = dummy.ObsTradeQueryBuilder(8, 987)
         # 検索条件をアップロードする.
         upload_to_blob(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
@@ -297,6 +297,13 @@ def run():
         wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=cfg.TIMEOUT_AGGR))
         if is_task_failed(client, job_id):
             raise RuntimeError("TASK(集約)が失敗しました. 異常終了します.")
+
+        # AzureBlobから結果をダウンロードする.
+        blob_service_client.get_blob_to_path(
+            container_name=cfg.STORAGE_CONTAINER_DOWNLOAD,
+            blob_name=os.path.join(job_id, cfg.TASK_ID_CACL_PREFIX + 'BASE', 'npv.csv'),
+            file_path='npv.csv'
+        )
 
     except Exception as e:
         # 動いているタスクを強制終了する. 実際にここが役に立つのはタイムアウト時のみの想定.
