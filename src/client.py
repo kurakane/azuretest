@@ -56,8 +56,6 @@ def create_job(client, pool_id):
         id=job_id,
         pool_info=batch.models.PoolInformation(pool_id=pool_id))
 
-    print(f'JOBを投入します. [{job_id}]')
-
     # JOBをPOOLに投入する.
     client.job.add(job)
 
@@ -75,7 +73,7 @@ def setting_continer():
 def eval_task_status(task_return):
     """Taskの投入結果を判定する."""
     for result in task_return.value:
-        print(f'[{result.task_id}] [{result.status}]')
+        # print(f'[{result.task_id}] [{result.status}]')
         if result.status != batchmodels.TaskAddStatus.success:
             raise RuntimeError("Taskの投入に失敗しました.")
 
@@ -92,8 +90,6 @@ def create_select_task(client, job_id):
             command_line=command,
             container_settings=setting_continer()
             )
-
-    print(f'TASK(約定データ検索)を投入します. [{task_id}]')
 
     # TASKをJOBに追加する.
     result = client.task.add_collection(job_id, [task])
@@ -123,9 +119,9 @@ def create_calc_tasks(client, job_id):
             )
     tasks.append(task)
 
-    for i in range(3):
+    for i in range(1000):
         # センシティビティのTASK_IDを決定する.
-        task_id = cfg.TASK_ID_CACL_PREFIX + str(i).zfill(2)
+        task_id = cfg.TASK_ID_CACL_PREFIX + str(i).zfill(3)
         task_ids.append(task_id)
         # センシティビティのTASKを生成する.
         task = batch.models.TaskAddParameter(
@@ -134,8 +130,6 @@ def create_calc_tasks(client, job_id):
             container_settings=setting_continer()
             )
         tasks.append(task)
-
-    print(f'TASK(計算)を投入します. [{task_ids}]')
 
     # TASKをJOBに追加する.
     result = client.task.add_collection(job_id, tasks)
@@ -159,13 +153,11 @@ def create_aggr_tasks(client, job_id, task_ids):
             container_settings=setting_continer()
             )
 
-    print(f'TASK(集約)を投入します. [{task_id}]')
-
     # TASKをJOBに追加する.
     result = client.task.add_collection(job_id, [task])
     eval_task_status(result)
 
-    print(f'TASK(集約)を投入しました. [{task_id}]')
+    print(f'TASK(集約)を投入しました. [{len(task_ids)}件] ')
 
     return task_id
 
@@ -203,21 +195,19 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
         pickle.dump(obj, f)
 
     # アップロードファイルをBZ2圧縮する.
-    print(f'ファイルを圧縮します. [{blob_file_name}] [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB]')
     with open(cfg.FILE_TMP, 'rb') as f:
         data = f.read()
         with open(blob_file_name, 'wb') as f2:
             f2.write(bz2.compress(data))
-    print(f'ファイルを圧縮しました. [{blob_file_name}] [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB]')
+    print(f'ファイルを圧縮しました. [{blob_file_name}] [{(os.path.getsize(cfg.FILE_TMP) / 1024 / 1024):,.3f} MB] -> [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB]')
 
-    print(f'ファイルのアップロードします. [{blob_file_name}]')
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
     blob_service_client.create_blob_from_path(
         container_name=cfg.STORAGE_CONTAINER_UPLOAD,
         blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
         file_path=blob_file_name)
-    print(f'ファイルのアップロードが完了しました. [{blob_file_name}]')
+    print(f'ファイルのアップロードが完了しました. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_file_name}.bz2]')
 
     # アップロード後にローカルのファイルを削除する.
     os.remove(cfg.FILE_TMP)
@@ -236,7 +226,7 @@ def remove_input_file(blob_service_client, job_id, file_name):
 
 def remove_output_file(blob_service_client, job_id, task_ids):
     """npvファイルを全て削除する."""
-    pass    
+    pass
 
 
 def remove_input_files(blob_service_client, job_id):
