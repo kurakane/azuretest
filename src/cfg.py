@@ -21,16 +21,16 @@ STORAGE_CONTAINER_DOWNLOAD = 'data-out'
 POOL_ID = 'kurakanepool'
 # JOB IDのプリフィックス.
 JOB_ID_PREFIX = 'job_'
-# Task約定データ検索のプリフィックス.
-TASK_ID_SELECT_PREFIX = 't_select'
+# Task約定データ検索.
+TASK_ID_SELECT = 't_select'
 # Task計算のプリフィックス.
 TASK_ID_CACL_PREFIX = 't_calc_'
-# Tas集約のプリフィックス.
-TASK_ID_AGGR_PREFIX = 't_aggr'
+# Task集約.
+TASK_ID_AGGR = 't_aggr'
 
 # タイムアウト値(分)
 TIMEOUT_SELECT = 5
-TIMEOUT_CALC = 20
+TIMEOUT_CALC = 1
 TIMEOUT_AGGR = 10
 
 # Task約定データ検索のファイル名.
