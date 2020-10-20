@@ -32,13 +32,13 @@ def create_batch_service_client():
 def check_pool(client, pool_id):
     """POOLの状態をチェックする."""
     # POOLの存在チェックを行う.
-    if not client.pool.exists(cfg.POOL_ID) :
-        raise RuntimeError(f'POOLが存在しません. 異常終了します. [{cfg.POOL_ID}]')
+    if not client.pool.exists(pool_id) :
+        raise RuntimeError(f'POOLが存在しません. 異常終了します. [{pool_id}]')
 
     # POOLのステータスチェックを行う.
-    pool = client.pool.get(cfg.POOL_ID)
+    pool = client.pool.get(pool_id)
     if pool.state != batchmodels.PoolState.active:
-        raise RuntimeError(f'POOLがActiveではありません. 異常終了します. [{cfg.POOL_ID}] [{pool.state}]')
+        raise RuntimeError(f'POOLがActiveではありません. 異常終了します. [{pool_id}] [{pool.state}]')
 
     print(f'POOL STATE : [{pool_id}] [{pool.state}]')
 
@@ -123,11 +123,11 @@ def create_calc_tasks(client, job_id):
             )
     tasks.append(task)
 
-    # センシティビティのTASK_IDを決定する.
-    for i in range(50):
-        task_id = cfg.TASK_ID_CACL_PREFIX + str(i)
+    for i in range(3):
+        # センシティビティのTASK_IDを決定する.
+        task_id = cfg.TASK_ID_CACL_PREFIX + str(i).zfill(2)
         task_ids.append(task_id)
-
+        # センシティビティのTASKを生成する.
         task = batch.models.TaskAddParameter(
             id=task_id,
             command_line=command,
@@ -144,6 +144,30 @@ def create_calc_tasks(client, job_id):
     print(f'TASK(計算)を投入しました. [{task_ids}]')
 
     return task_ids
+
+
+def create_aggr_tasks(client, job_id, task_ids):
+    """集約用のタスクを投入する."""
+    command = 'python ' + cfg.TASK_AGGR_APP + ' ' + ' '.join(task_ids)
+
+    # TASK IDを決定する.
+    task_id = cfg.TASK_ID_AGGR_PREFIX
+    # TASKを生成する.
+    task = batch.models.TaskAddParameter(
+            id=task_id,
+            command_line=command,
+            container_settings=setting_continer()
+            )
+
+    print(f'TASK(集約)を投入します. [{task_id}]')
+
+    # TASKをJOBに追加する.
+    result = client.task.add_collection(job_id, [task])
+    eval_task_status(result)
+
+    print(f'TASK(集約)を投入しました. [{task_id}]')
+
+    return task_id
 
 
 def wait_for_tasks_to_complete(client, job_id, timeout):
@@ -186,18 +210,46 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
             f2.write(bz2.compress(data))
     print(f'ファイルを圧縮しました. [{blob_file_name}] [{(os.path.getsize(blob_file_name) / 1024 / 1024):,.3f} MB]')
 
-    print(f'ファイルをアップロードします. [{blob_file_name}]')
+    print(f'ファイルのアップロードします. [{blob_file_name}]')
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
     blob_service_client.create_blob_from_path(
         container_name=cfg.STORAGE_CONTAINER_UPLOAD,
         blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
         file_path=blob_file_name)
-    print(f'ファイルをアップロードが完了しました. [{blob_file_name}]')
+    print(f'ファイルのアップロードが完了しました. [{blob_file_name}]')
 
     # アップロード後にローカルのファイルを削除する.
     os.remove(cfg.FILE_TMP)
     os.remove(blob_file_name)
+
+
+def remove_input_file(blob_service_client, job_id, file_name):
+    blob_name = os.path.join(job_id, file_name)
+    if blob_service_client.exists(cfg.STORAGE_CONTAINER_UPLOAD, blob_name):
+        print(f'入力ファイルを削除します. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_name}]')
+        blob_service_client.delete_blob(
+            container_name=cfg.STORAGE_CONTAINER_UPLOAD,
+            blob_name=blob_name
+        )
+
+
+def remove_output_file(blob_service_client, job_id, task_ids):
+    """npvファイルを全て削除する."""
+    pass    
+
+
+def remove_input_files(blob_service_client, job_id):
+    """JOBに紐付く入力ファイルを全て削除する. 1つ1つしか消せない."""
+
+    # 検索条件を削除する.
+    remove_input_file(blob_service_client, job_id, cfg.FILE_SELECT + '.bz2')
+    # 休日情報を削除する.
+    remove_input_file(blob_service_client, job_id, cfg.FILE_HOLIDAYS + '.bz2')
+    # 約定データを削除する.
+    remove_input_file(blob_service_client, job_id, cfg.FILE_TRADES + '.bz2')
+
+    print("入力ファイルを全て削除しました.")
 
 
 def run():
@@ -225,16 +277,14 @@ def run():
         upload_to_blob(blob_service_client, job_id, cfg.FILE_HOLIDAYS, holidays)
 
         # ★ダミーの検索条件をシリアライズする.
-        condition = dummy.ObsTradeQueryBuilder(10000, 100)
+        condition = dummy.ObsTradeQueryBuilder(5, 10)
         # 検索条件をアップロードする.
         upload_to_blob(blob_service_client, job_id, cfg.FILE_SELECT, condition)
 
         # 約定データ検索用のTASKを投入する.
         task_id = create_select_task(client, job_id)
-
         # 約定データ検索用のTASKを監視する.
-        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=5))
-
+        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=cfg.TIMEOUT_SELECT))
         # 約定データ検索用のTASKの終了コードを取得する.
         task_select = client.task.get(job_id, task_id)
         print(f"TASK(約定データ検索)が終了しました. [{task_id}] [{task_select.execution_info.result}]")
@@ -243,16 +293,19 @@ def run():
 
         # 計算用のTASKを投入する.
         task_ids = create_calc_tasks(client, job_id)
-
         # 計算用のTASKを監視する.
-        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=20))
-
+        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=cfg.TIMEOUT_CALC))
         # 計算用のTASKの終了コードを取得する.
         for task_id in task_ids:
             task_calc = client.task.get(job_id, task_id)
             print(f"TAKS(計算)が終了しました. [{task_id}] [{task_calc.execution_info.result}]")
             if task_calc.execution_info.result != batchmodels.TaskExecutionResult.success:       
                 raise RuntimeError("TASK(計算)が失敗しました. 異常終了します.")
+
+        # 集約のTASKを投入する.
+        task_id = create_aggr_tasks(client, job_id, task_ids)
+        # 集約のTASKを監視する.
+        wait_for_tasks_to_complete(client, job_id, datetime.timedelta(minutes=cfg.TIMEOUT_AGGR))
 
     except Exception as e:
         # 動いているタスクを強制終了する. 実際にここが役に立つのはタイムアウト時のみの想定.
@@ -266,13 +319,19 @@ def run():
         print(f'ジョブを強制終了します. [{job_id}]')
         client.job.terminate(job_id, terminate_reason='異常終了')
 
+        # AzureStorageから入力ファイルを削除する.
+        remove_input_files(blob_service_client, job_id)
+
         # 例外は呼び出し元に投げる.
         raise e
 
     # JOBを正常終了する.
     client.job.terminate(job_id, terminate_reason='正常終了')
 
-    # TODO: AzureStorageから不要なファイルを削除する.
+    # AzureStorageから入力ファイルを削除する.
+    remove_input_files(blob_service_client, job_id)
+    # AzureStorageから出力ファイルを削除する
+    remove_output_file(blob_service_client, job_id, task_ids)
 
     print('AzureBatchテスト用のクライアントを正常終了しました.')
 

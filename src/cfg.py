@@ -22,14 +22,23 @@ POOL_ID = 'kurakanepool'
 # JOB IDのプリフィックス.
 JOB_ID_PREFIX = 'job_'
 # Task約定データ検索のプリフィックス.
-TASK_ID_SELECT_PREFIX = 'task_select_'
+TASK_ID_SELECT_PREFIX = 't_select'
 # Task計算のプリフィックス.
-TASK_ID_CACL_PREFIX = 'task_calc_'
+TASK_ID_CACL_PREFIX = 't_calc_'
+# Tas集約のプリフィックス.
+TASK_ID_AGGR_PREFIX = 't_aggr'
+
+# タイムアウト値(分)
+TIMEOUT_SELECT = 5
+TIMEOUT_CALC = 20
+TIMEOUT_AGGR = 10
 
 # Task約定データ検索のファイル名.
 TASK_SELECT_APP = 'task_select.py'
 # Task計算のファイル名.
 TASK_CALC_APP = 'task_calc.py'
+# Task集約のファイル名.
+TASK_AGGR_APP = 'task_aggr.py'
 
 # コンテナのURL.
 CONTAINER_URL = 'kurakanecontainer.azurecr.io'
@@ -44,3 +53,5 @@ FILE_TMP = 'tmp.dmp'
 FILE_HOLIDAYS = 'Holidays'
 # アップロードする検索条件のファイル名.
 FILE_SELECT = 'ObsTradeQueryBuilder'
+# 明細のファイル名.
+FILE_TRADES = 'SplTrades'
