@@ -10,7 +10,7 @@ import sys
 import time
 
 import azure.batch.batch_auth as batch_auth
-import azure.batch.batch_service_client as batch
+import azure.batch._batch_service_client as batch
 import azure.batch.models as batchmodels
 import azure.storage.blob as azureblob
 
@@ -28,6 +28,55 @@ def create_batch_service_client():
     return batch.BatchServiceClient(
         credentials, batch_url=cfg.BATCH_ACCOUNT_URL)
 
+def create_pool(client):
+    """プールを作成する"""
+    new_pool = batchmodels.PoolAddParameter(
+        id=cfg.NEW_POOL_ID,
+        vm_size=cfg.NEW_POOL_VM_SIZE,
+        virtual_machine_configuration=batchmodels.VirtualMachineConfiguration(
+            image_reference=batchmodels.ImageReference(
+                publisher="Canonical",
+                offer="UbuntuServer",
+                sku="16.04-LTS",
+                version="latest"
+            ),
+            node_agent_sku_id="batch.node.ubuntu 16.04",
+            container_configuration=batchmodels.ContainerConfiguration(
+                type="dockerCompatible",
+                container_image_names=["yamayamaregistory.azurecr.io/azurecloud:latest"],
+                container_registries=[batchmodels.ContainerRegistry(
+                    registry_server="yamayamaregistory.azurecr.io",
+                    user_name="yamayamaregistory",
+                    password="qGOKPq552=7tNLXiDkAgbokA2vdvsU4T"
+                )]
+            )
+        ),
+        resize_timeout="PT15M",
+        target_dedicated_nodes=cfg.NEW_POOL_NODE_COUNT,
+        target_low_priority_nodes=cfg.NEW_POOL_NODE_COUNT,
+        enable_auto_scale=False,
+        enable_inter_node_communication=False,
+        start_task=batchmodels.StartTask(
+            command_line="/bin/bash -c startup.sh",
+            resource_files=[batchmodels.ResourceFile(
+                auto_storage_container_name="startupscript"
+            )],
+            user_identity=batchmodels.UserIdentity(
+                auto_user=batchmodels.AutoUserSpecification(
+                    scope="pool",
+                    elevation_level="admin"
+                )
+            ),
+            max_task_retry_count=1,
+            wait_for_success=True
+        ),
+        max_tasks_per_node=1,
+        task_scheduling_policy=batchmodels.TaskSchedulingPolicy(
+            node_fill_type="Pack"
+        )
+    )
+    client.pool.add(new_pool)
+    time.sleep(300)
 
 def check_pool(client, pool_id):
     """POOLの状態をチェックする."""
@@ -204,10 +253,8 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
     print(f'ファイルをアップロードします [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_file_name}.bz2]', end='')
-    blob_service_client.create_blob_from_path(
-        container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-        blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
-        file_path=blob_file_name)
+    container_client = blob_service_client.get_container_client(cfg.STORAGE_CONTAINER_UPLOAD)
+    container_client.upload_blob(os.path.join(job_id, blob_file_name + '.bz2'), blob_file_name)
     print(f' <OK>')
 
     # アップロード後にローカルのファイルを削除する.
@@ -221,13 +268,11 @@ def is_task_failed(client, job_id):
 
 
 def remove_input_file(blob_service_client, job_id, file_name):
+    container_client = blob_service_client.get_container_client(cfg.STORAGE_CONTAINER_UPLOAD)
     blob_name = os.path.join(job_id, file_name)
-    if blob_service_client.exists(cfg.STORAGE_CONTAINER_UPLOAD, blob_name):
+    if len(container_client.list_blobs(blob_name)) > 0:
         print(f'入力ファイルを削除します. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_name}]', end='')
-        blob_service_client.delete_blob(
-            container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-            blob_name=blob_name
-        )
+        container_client.delete_blob(blob_name)
         print(f' <OK>')
 
 
@@ -256,16 +301,18 @@ def run():
     # AzureBatchアクセス用のクライアントを生成する.
     client = create_batch_service_client()
 
+    # POOlの作成
+    create_pool(client)
+
     # POOLの状態をチェックする. POOLが使用できる状態でない場合は終了する.
-    check_pool(client, cfg.POOL_ID)
+    check_pool(client, cfg.NEW_POOL_ID)
 
     # JOBを投入する.
-    job_id = create_job(client, cfg.POOL_ID)
+    job_id = create_job(client, cfg.NEW_POOL_ID)
 
     try:
         # AzureStorageのクライアントを生成する.
-        blob_service_client = azureblob.BlockBlobService(
-            account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
+        blob_service_client = azureblob.BlobServiceClient.from_connection_string(cfg.STORAGE_ACCOUNT_NAME)
 
         # ★ダミーの休日情報を取得する.
         holidays = dummy.Holidays()
@@ -299,11 +346,8 @@ def run():
             raise RuntimeError("TASK(集約)が失敗しました. 異常終了します.")
 
         # AzureBlobから結果をダウンロードする.
-        blob_service_client.get_blob_to_path(
-            container_name=cfg.STORAGE_CONTAINER_DOWNLOAD,
-            blob_name=os.path.join(job_id, cfg.TASK_ID_CACL_PREFIX + 'BASE', 'npv.csv'),
-            file_path='npv.csv'
-        )
+        container_client = blob_service_client.get_container_client(cfg.STORAGE_CONTAINER_DOWNLOAD)
+        container_client.download_blob(os.path.join(job_id, cfg.TASK_ID_CACL_PREFIX + 'BASE', 'npv.csv'))
 
     except Exception as e:
         # 動いているタスクを強制終了する. 実際にここが役に立つのはタイムアウト時のみの想定.
