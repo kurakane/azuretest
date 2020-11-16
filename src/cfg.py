@@ -62,3 +62,5 @@ NEW_POOL_ID = 'yamayamapools'
 NEW_POOL_VM_SIZE = 'Standard_A1_v2'
 # POOLのノード数.
 NEW_POOL_NODE_COUNT = 1
+# Storage接続文字列
+CONNECTION_STRING = 'DefaultEndpointsProtocol=https;AccountName=yamayamastorage;AccountKey=7gYfZ5I+wqoFVBPNW3WiihawzUPmf2E6N/E7P4ggzFcU0Jt/OrvItof5UfpfJjr2TD7+n1smZcHfjwz7IwoEAA==;EndpointSuffix=core.windows.net'

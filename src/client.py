@@ -35,36 +35,36 @@ def create_pool(client):
         vm_size=cfg.NEW_POOL_VM_SIZE,
         virtual_machine_configuration=batchmodels.VirtualMachineConfiguration(
             image_reference=batchmodels.ImageReference(
-                publisher="Canonical",
-                offer="UbuntuServer",
-                sku="16.04-LTS",
-                version="latest"
+                publisher='Canonical',
+                offer='UbuntuServer',
+                sku='18.04-LTS',
+                version='latest'
             ),
-            node_agent_sku_id="batch.node.ubuntu 16.04",
-            container_configuration=batchmodels.ContainerConfiguration(
-                type="dockerCompatible",
-                container_image_names=["yamayamaregistory.azurecr.io/azurecloud:latest"],
-                container_registries=[batchmodels.ContainerRegistry(
-                    registry_server="yamayamaregistory.azurecr.io",
-                    user_name="yamayamaregistory",
-                    password="qGOKPq552=7tNLXiDkAgbokA2vdvsU4T"
-                )]
-            )
+            node_agent_sku_id='batch.node.ubuntu 18.04',
+            # container_configuration=batchmodels.ContainerConfiguration(
+            #     type='dockerCompatible',
+            #     container_image_names=['yamayamaregistory.azurecr.io/azurecloud'],
+            #     container_registries=[batchmodels.ContainerRegistry(
+            #         registry_server='yamayamaregistory.azurecr.io',
+            #         user_name='yamayamaregistory',
+            #         password='qGOKPq552=7tNLXiDkAgbokA2vdvsU4T'
+            #     )]
+            # )
         ),
-        resize_timeout="PT15M",
+        resize_timeout='PT15M',
         target_dedicated_nodes=cfg.NEW_POOL_NODE_COUNT,
         target_low_priority_nodes=cfg.NEW_POOL_NODE_COUNT,
         enable_auto_scale=False,
         enable_inter_node_communication=False,
         start_task=batchmodels.StartTask(
-            command_line="/bin/bash -c startup.sh",
+            command_line='/bin/bash -c startup.sh',
             resource_files=[batchmodels.ResourceFile(
-                auto_storage_container_name="startupscript"
+                auto_storage_container_name='startupscript'
             )],
             user_identity=batchmodels.UserIdentity(
                 auto_user=batchmodels.AutoUserSpecification(
-                    scope="pool",
-                    elevation_level="admin"
+                    scope='pool',
+                    elevation_level='admin'
                 )
             ),
             max_task_retry_count=1,
@@ -72,7 +72,7 @@ def create_pool(client):
         ),
         max_tasks_per_node=1,
         task_scheduling_policy=batchmodels.TaskSchedulingPolicy(
-            node_fill_type="Pack"
+            node_fill_type='Pack'
         )
     )
     client.pool.add(new_pool)
@@ -270,10 +270,11 @@ def is_task_failed(client, job_id):
 def remove_input_file(blob_service_client, job_id, file_name):
     container_client = blob_service_client.get_container_client(cfg.STORAGE_CONTAINER_UPLOAD)
     blob_name = os.path.join(job_id, file_name)
-    if len(container_client.list_blobs(blob_name)) > 0:
-        print(f'入力ファイルを削除します. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_name}]', end='')
-        container_client.delete_blob(blob_name)
-        print(f' <OK>')
+    for blob in container_client.list_blobs(blob_name):
+        if blob is not None:
+            print(f'入力ファイルを削除します. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob}]', end='')
+            container_client.delete_blob(blob)
+            print(f' <OK>')
 
 
 def remove_output_file(blob_service_client, job_id, task_ids):
@@ -312,7 +313,7 @@ def run():
 
     try:
         # AzureStorageのクライアントを生成する.
-        blob_service_client = azureblob.BlobServiceClient.from_connection_string(cfg.STORAGE_ACCOUNT_NAME)
+        blob_service_client = azureblob.BlobServiceClient.from_connection_string(cfg.CONNECTION_STRING)
 
         # ★ダミーの休日情報を取得する.
         holidays = dummy.Holidays()
