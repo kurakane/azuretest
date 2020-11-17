@@ -1,0 +1,18 @@
+client.pyの44行目にあるcontainer_configurationを設定しよう取るすると、以下のエラーが出力される。
+　指定したコンテナ設定では、VMイメージで指定したpublisher(発行者)やoffer(プラン)、SKUをサポートしていない。
+
+設定しない場合は、エラーなく処理されるが、後続のタスク実行処理でエラーとなる。
+このタスク実行処理で発生するエラーは以前コンテナー設定が誤っていたために発生したものと酷似している。
+
+Exception has occurred: BatchErrorException
+Request encountered an exception.
+Code: InvalidPropertyValue
+Message: {'additional_properties': {}, 'lang': 'en-US', 'value': 'The value provided for one of the properties in the request body is invalid.\nRequestId:a77857bc-d564-4833-8d0d-57a4d2a79ce8\nTime:2020-11-17T07:52:49.2634824Z'}
+PropertyName: containerConfiguration
+Reason: The specified imageReference with publisher Canonical offer UbuntuServer sku 18.04-LTS does not support container feature.
+  File "C:\work\azuretest\src\client.py", line 97, in create_pool
+    client.pool.add(new_pool)
+  File "C:\work\azuretest\src\client.py", line 306, in run
+    create_pool(client)
+  File "C:\work\azuretest\src\client.py", line 383, in <module>
+    run()
