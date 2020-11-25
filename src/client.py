@@ -10,7 +10,7 @@ import sys
 import time
 
 import azure.batch.batch_auth as batch_auth
-import azure.batch.batch_service_client as batch
+import azure.batch._batch_service_client as batch
 import azure.batch.models as batchmodels
 import azure.storage.blob as azureblob
 
@@ -34,7 +34,7 @@ def check_pool(client, pool_id):
 
     print(f'POOLの状態をチェックします', end='')
     # POOLの存在チェックを行う.
-    if not client.pool.exists(pool_id) :
+    if not client.pool.exists(pool_id):
         raise RuntimeError(f'POOLが存在しません 異常終了します [{pool_id}]')
 
     # POOLのステータスチェックを行う.
@@ -204,10 +204,11 @@ def upload_to_blob(blob_service_client, job_id, blob_file_name, obj):
     # 検索条件のファイルをアップロードする.
     # その際はフォルダ名をJOB IDにする.
     print(f'ファイルをアップロードします [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_file_name}.bz2]', end='')
-    blob_service_client.create_blob_from_path(
-        container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-        blob_name=os.path.join(job_id, blob_file_name + '.bz2'),
-        file_path=blob_file_name)
+    blob_client = blob_service_client.get_blob_client(
+        container=cfg.STORAGE_CONTAINER_UPLOAD,
+        blob=os.path.join(job_id, blob_file_name + '.bz2'))
+    with open(blob_file_name, 'rb') as upload_data:
+        blob_client.upload_blob(upload_data)
     print(f' <OK>')
 
     # アップロード後にローカルのファイルを削除する.
@@ -219,32 +220,18 @@ def is_task_failed(client, job_id):
     """全てのTASKが正常終了しているかを判定する."""
     return (client.job.get_task_counts(job_id).failed > 0)
 
-
-def remove_input_file(blob_service_client, job_id, file_name):
-    blob_name = os.path.join(job_id, file_name)
-    if blob_service_client.exists(cfg.STORAGE_CONTAINER_UPLOAD, blob_name):
-        print(f'入力ファイルを削除します. [{cfg.STORAGE_CONTAINER_UPLOAD}] [{blob_name}]', end='')
-        blob_service_client.delete_blob(
-            container_name=cfg.STORAGE_CONTAINER_UPLOAD,
-            blob_name=blob_name
-        )
-        print(f' <OK>')
-
-
 def remove_output_file(blob_service_client, job_id, task_ids):
     """npvファイルを全て削除する."""
     pass
 
 
 def remove_input_files(blob_service_client, job_id):
-    """JOBに紐付く入力ファイルを全て削除する. 1つ1つしか消せない."""
-
-    # 検索条件を削除する.
-    remove_input_file(blob_service_client, job_id, cfg.FILE_SELECT + '.bz2')
-    # 休日情報を削除する.
-    remove_input_file(blob_service_client, job_id, cfg.FILE_HOLIDAYS + '.bz2')
-    # 約定データを削除する.
-    remove_input_file(blob_service_client, job_id, cfg.FILE_TRADES + '.bz2')
+    """JOB_IDに紐付く入力ファイルを全て削除する."""
+    container_client = blob_service_client.get_container_client(
+        cfg.STORAGE_CONTAINER_UPLOAD)
+    # job_idから始まるファイルを取得する.
+    blobs = container_client.list_blobs(name_starts_with=job_id)
+    container_client.delete_blobs(*blobs)
 
     print("入力ファイルを全て削除しました.")
 
@@ -264,8 +251,8 @@ def run():
 
     try:
         # AzureStorageのクライアントを生成する.
-        blob_service_client = azureblob.BlockBlobService(
-            account_name=cfg.STORAGE_ACCOUNT_NAME, account_key=cfg.STORAGE_ACCOUNT_KEY)
+        blob_service_client = azureblob.BlobServiceClient.from_connection_string(
+            cfg.CONNECTION_STRING)
 
         # ★ダミーの休日情報を取得する.
         holidays = dummy.Holidays()
@@ -299,11 +286,12 @@ def run():
             raise RuntimeError("TASK(集約)が失敗しました. 異常終了します.")
 
         # AzureBlobから結果をダウンロードする.
-        blob_service_client.get_blob_to_path(
-            container_name=cfg.STORAGE_CONTAINER_DOWNLOAD,
-            blob_name=os.path.join(job_id, cfg.TASK_ID_CACL_PREFIX + 'BASE', 'npv.csv'),
-            file_path='npv.csv'
-        )
+        blob_client = blob_service_client.get_blob_client(
+            container=cfg.STORAGE_CONTAINER_DOWNLOAD,
+            blob=os.path.join(job_id, cfg.TASK_ID_CACL_PREFIX + 'BASE', 'npv.csv'))
+        with open('./npv.csv', 'wb') as download_data:
+            blob_data = blob_client.download_blob()
+            download_data.write(blob_data.readall())
 
     except Exception as e:
         # 動いているタスクを強制終了する. 実際にここが役に立つのはタイムアウト時のみの想定.

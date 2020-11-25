@@ -1,16 +1,16 @@
 # 各種定義ファイル.
 
 # AzureBatchのバッチアカウント名.
-BATCH_ACCOUNT_NAME = 'kurakane'
+BATCH_ACCOUNT_NAME = 'yamayamabatch'
 # AzureBatchのアクセスキー.
-BATCH_ACCOUNT_KEY = 'KtuabRR1tPPPduMqLjMnuANzs4Uo0HOWZ0kRgy3ehvvvXR1AOtFWyy+iXPEv0br0PaH79ZUQClu9n8XFBYJYKA=='
+BATCH_ACCOUNT_KEY = 'Ko5u/RSuisLs/D4KnrS0m/DHzh07TaILWqw94kO4RXv6A2ylh2dtLOEmm6zVdr8OrCmVjsap7yTul4mKhpdeBw=='
 # AzureBatchのアカウントURL
-BATCH_ACCOUNT_URL = 'https://kurakane.japaneast.batch.azure.com'
+BATCH_ACCOUNT_URL = 'https://yamayamabatch.westus.batch.azure.com'
 
 # AzureStrageのアカウント名.
-STORAGE_ACCOUNT_NAME = 'kurakanestrage'
+STORAGE_ACCOUNT_NAME = 'yamayamastorage'
 # AzureStrageのアクセスキー.
-STORAGE_ACCOUNT_KEY = 'vuMEUJwlfdHxnFsaCTMgW/zedeZA+k5do519n8OXE9QUW+J6aYQvHuoYvi5q/7aH7ylEEIixinWUEQObQH+WlQ=='
+STORAGE_ACCOUNT_KEY = '7gYfZ5I+wqoFVBPNW3WiihawzUPmf2E6N/E7P4ggzFcU0Jt/OrvItof5UfpfJjr2TD7+n1smZcHfjwz7IwoEAA=='
 
 # アップロード先のAzureStorageコンテナ名.
 STORAGE_CONTAINER_UPLOAD = 'data-in'
@@ -18,7 +18,7 @@ STORAGE_CONTAINER_UPLOAD = 'data-in'
 STORAGE_CONTAINER_DOWNLOAD = 'data-out'
 
 # POOL ID.
-POOL_ID = 'kurakanepool'
+POOL_ID = 'yamayamapool'
 # JOB IDのプリフィックス.
 JOB_ID_PREFIX = 'job_'
 # Task約定データ検索.
@@ -41,9 +41,9 @@ TASK_CALC_APP = 'task_calc.py'
 TASK_AGGR_APP = 'task_aggr.py'
 
 # コンテナのURL.
-CONTAINER_URL = 'kurakanecontainer.azurecr.io'
+CONTAINER_URL = 'yamayamaregistory.azurecr.io'
 # Pythonのコンテナ名.
-CONTAINER_PY_NAME = '/azurecloud:test'
+CONTAINER_PY_NAME = '/azurecloud:latest'
 # Pythonコンテナ接続時のオプション.
 CONTAINER_PY_OPT = '--workdir /app --volume /mnt/data-in:/' + STORAGE_CONTAINER_UPLOAD + ' --volume /mnt/data-out:/' + STORAGE_CONTAINER_DOWNLOAD
 
@@ -55,3 +55,6 @@ FILE_HOLIDAYS = 'Holidays'
 FILE_SELECT = 'ObsTradeQueryBuilder'
 # 明細のファイル名.
 FILE_TRADES = 'SplTrades'
+
+# Storage接続文字列
+CONNECTION_STRING = 'DefaultEndpointsProtocol=https;AccountName=yamayamastorage;AccountKey=7gYfZ5I+wqoFVBPNW3WiihawzUPmf2E6N/E7P4ggzFcU0Jt/OrvItof5UfpfJjr2TD7+n1smZcHfjwz7IwoEAA==;EndpointSuffix=core.windows.net'
